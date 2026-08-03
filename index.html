@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="A one-tap reaction challenge. Set a score, send the link, and see who is faster.">
+  <title>Beat Your Friend — Reaction Challenge</title>
+  <style>
+    :root {
+      --ink:#151515; --paper:#ffffff; --card:#ffffff; --lime:#d7ff43;
+      --red:#ff5c4d; --blue:#5b7cff; --muted:#6f6a62; --line:rgba(21,21,21,.14);
+      --shadow:0 18px 50px rgba(42,35,24,.12);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    body{min-height:100svh;overflow-x:hidden;transition:background .3s ease}
+    body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.45;background-image:radial-gradient(rgba(21,21,21,.12) .7px,transparent .7px);background-size:7px 7px;mask-image:linear-gradient(to bottom,#000,transparent 80%)}
+    #pixelWorld{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;image-rendering:pixelated}
+    body.ready{background:var(--lime)} body.early{background:#ffd6d1}
+    button,input{font:inherit}
+    button{color:inherit}
+    .app{position:relative;min-height:100svh;display:grid;grid-template-rows:auto 1fr auto;padding:clamp(18px,4vw,36px);max-width:920px;margin:auto}
+    header{display:flex;align-items:center;justify-content:space-between;gap:16px}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:900;letter-spacing:-.04em;font-size:clamp(18px,3vw,23px)}
+    .mark{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--ink);color:var(--lime);font-size:18px;transform:rotate(-8deg)}
+    .stats{display:flex;gap:7px;align-items:center}.best{font-size:13px;font-weight:750;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:9px 13px;background:rgba(255,255,255,.7)}
+    main{display:grid;place-items:center;padding:28px 0}
+    .game{width:min(100%,650px);text-align:center}
+    .eyebrow{display:inline-flex;align-items:center;gap:7px;margin:0 0 18px;font-size:12px;text-transform:uppercase;letter-spacing:.15em;font-weight:850;color:var(--muted)}
+    .dot{width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 0 4px rgba(255,92,77,.14)}
+    h1{margin:0;font-size:clamp(46px,10vw,92px);line-height:.88;letter-spacing:-.075em;font-weight:950;text-wrap:balance}
+    .accent{position:relative;white-space:nowrap}.accent::after{content:"";position:absolute;left:2%;right:0;bottom:-5px;height:9px;background:var(--lime);z-index:-1;transform:rotate(-1deg)}
+    .subtitle{max-width:510px;margin:24px auto 28px;color:var(--muted);font-size:clamp(16px,2.5vw,19px);line-height:1.55}
+    .challenger{display:none;align-items:center;justify-content:center;gap:10px;margin:0 auto 22px;padding:10px 15px;width:max-content;max-width:100%;background:var(--ink);color:white;border-radius:999px;font-weight:750;font-size:14px}
+    .challenger.show{display:flex;animation:pop .4s cubic-bezier(.2,.8,.2,1)}
+    .score-pill{color:var(--lime);font-variant-numeric:tabular-nums}
+    .arena{position:relative;width:min(72vw,270px);aspect-ratio:1;margin:0 auto 26px}
+    .ring{position:absolute;inset:-13px;border:1.5px dashed rgba(21,21,21,.24);border-radius:50%;animation:spin 18s linear infinite;transition:opacity .2s}
+    .tap{position:absolute;inset:0;border:0;border-radius:50%;background:var(--ink);color:white;cursor:pointer;touch-action:manipulation;user-select:none;-webkit-tap-highlight-color:transparent;box-shadow:0 15px 0 #000,0 25px 45px rgba(21,21,21,.22);display:grid;place-content:center;gap:5px;transition:transform .12s ease,box-shadow .12s ease,background .2s;color .2s}
+    .tap:hover{transform:translateY(-3px);box-shadow:0 18px 0 #000,0 28px 50px rgba(21,21,21,.25)}
+    .tap:active,.tap.pressed{transform:translateY(10px);box-shadow:0 5px 0 #000,0 12px 24px rgba(21,21,21,.18)}
+    .tap:focus-visible{outline:5px solid var(--blue);outline-offset:7px}
+    .tap-main{font-weight:950;font-size:clamp(26px,7vw,42px);letter-spacing:-.05em;line-height:1}
+    .tap-sub{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.6);font-weight:750}
+    .waiting .tap{background:#efeadf;color:var(--ink);box-shadow:0 15px 0 #c9c2b5,0 25px 45px rgba(21,21,21,.12)}
+    .waiting .tap-sub{color:var(--muted)} .waiting .ring{animation-duration:3s}
+    .is-ready .tap{background:var(--ink);animation:pulse .75s infinite alternate}.is-ready .ring{opacity:0}
+    .result-card{display:none;margin:2px auto 0;max-width:520px;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:22px;box-shadow:var(--shadow);animation:rise .45s cubic-bezier(.2,.8,.2,1)}
+    .result-card.show{display:block}
+    .result-label{margin:0;color:var(--muted);text-transform:uppercase;letter-spacing:.13em;font-size:12px;font-weight:850}
+    .result-score{font-size:clamp(50px,12vw,78px);font-weight:950;letter-spacing:-.065em;line-height:1;margin:8px 0 4px;font-variant-numeric:tabular-nums}
+    .result-score span{font-size:.32em;letter-spacing:-.02em;color:var(--muted)}
+    .verdict{font-size:17px;font-weight:800;margin:10px 0 18px}.win{color:#267a37}.lose{color:#c1392d}
+    .name-row{display:flex;gap:9px;margin:0 auto 10px}
+    input{min-width:0;flex:1;border:1px solid var(--line);border-radius:13px;background:white;padding:12px 14px;outline:none}
+    input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(91,124,255,.15)}
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+    .btn{border:0;border-radius:13px;padding:13px 15px;font-weight:850;cursor:pointer;transition:transform .15s ease,filter .15s}.btn:hover{transform:translateY(-2px)}.btn:active{transform:translateY(0)}
+    .primary{background:var(--ink);color:white}.secondary{background:#eee9df}.full{grid-column:1/-1}
+    .hint{min-height:20px;margin:15px 0 0;color:var(--muted);font-size:13px;font-weight:650}
+    footer{display:flex;justify-content:center;color:var(--muted);font-size:12px;text-align:center;padding-top:8px}
+    .shake{animation:shake .36s ease}
+    @keyframes spin{to{transform:rotate(360deg)}} @keyframes pulse{to{transform:scale(1.035)}}
+    @keyframes rise{from{opacity:0;transform:translateY(15px) scale(.97)}} @keyframes pop{from{opacity:0;transform:scale(.9)}}
+    @keyframes shake{25%{transform:translateX(-8px)}50%{transform:translateX(7px)}75%{transform:translateX(-4px)}}
+    @media(max-width:520px){.app{padding:18px 16px 16px}.brand{font-size:17px}.best{font-size:11px;padding:8px}.subtitle{margin:19px auto 22px}.arena{width:min(67vw,250px)}.result-card{padding:18px;border-radius:20px}.name-row{flex-direction:column}.actions{grid-template-columns:1fr} .full{grid-column:auto}}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
+  </style>
+</head>
+<body>
+  <canvas id="pixelWorld" aria-hidden="true"></canvas>
+  <div class="app">
+    <header>
+      <div class="brand"><span class="mark" aria-hidden="true">⚡</span> Beat Your Friend</div>
+      <div class="stats"><div class="best" id="eggs">Eggs: 0/100</div><div class="best" id="best">Best: —</div></div>
+    </header>
+    <main>
+      <section class="game" aria-labelledby="title">
+        <p class="eyebrow"><span class="dot"></span><span id="eyebrow">Reaction challenge</span></p>
+        <h1 id="title">How fast are <span class="accent">you?</span></h1>
+        <p class="subtitle" id="subtitle">Tap start, wait for the screen to turn green, then hit the button as fast as you can.</p>
+        <div class="challenger" id="challenger"><span id="challengeText"></span><span class="score-pill" id="targetScore"></span></div>
+        <div class="arena" id="arena">
+          <div class="ring" aria-hidden="true"></div>
+          <button class="tap" id="tap" type="button" aria-describedby="hint">
+            <span class="tap-main" id="tapMain">START</span>
+            <span class="tap-sub" id="tapSub">tap or press space</span>
+          </button>
+        </div>
+        <section class="result-card" id="result" aria-live="polite">
+          <p class="result-label" id="resultLabel">Your reaction time</p>
+          <div class="result-score"><b id="score">0</b> <span>ms</span></div>
+          <p class="verdict" id="verdict"></p>
+          <div class="name-row">
+            <input id="name" maxlength="24" autocomplete="name" placeholder="Your name (optional)" aria-label="Your name for the challenge">
+          </div>
+          <div class="actions">
+            <button class="btn secondary" id="retry" type="button">Try again</button>
+            <button class="btn primary" id="share" type="button">Challenge a friend</button>
+          </div>
+        </section>
+        <p class="hint" id="hint" aria-live="assertive">One tap. No sign-up. Pure reflex.</p>
+      </section>
+    </main>
+    <footer>Your score stays on this device. Challenge links contain only your name and score.</footer>
+  </div>
+  <script>
+    (() => {
+      'use strict';
+      const $ = id => document.getElementById(id);
+      const els = { body:document.body, arena:$('arena'), tap:$('tap'), tapMain:$('tapMain'), tapSub:$('tapSub'), hint:$('hint'), result:$('result'), score:$('score'), verdict:$('verdict'), resultLabel:$('resultLabel'), retry:$('retry'), share:$('share'), name:$('name'), best:$('best'), eggs:$('eggs'), challenger:$('challenger'), challengeText:$('challengeText'), targetScore:$('targetScore'), eyebrow:$('eyebrow'), title:$('title'), subtitle:$('subtitle') };
+      const params = new URLSearchParams(location.search);
+      const parsedTarget = Number.parseInt(params.get('score'), 10);
+      const target = Number.isFinite(parsedTarget) && parsedTarget >= 80 && parsedTarget <= 2000 ? parsedTarget : null;
+      const challengerName = (params.get('name') || 'A friend').trim().slice(0,24) || 'A friend';
+      let state='idle', timer=null, readyAt=0, currentScore=null;
+      const storedBest = Number.parseInt(localStorage.getItem('byf-best'),10);
+      let best = Number.isFinite(storedBest) ? storedBest : null;
+      let foundEggs; try{ foundEggs=new Set(JSON.parse(localStorage.getItem('byf-eggs')||'[]')); }catch(e){ foundEggs=new Set(); }
+      function updateEggs(){ els.eggs.textContent=`Eggs: ${foundEggs.size}/100`; }
+      updateEggs();
+
+      // Tiny, dependency-free pixel creatures that occasionally wander through the background.
+      const world=$('pixelWorld'), ctx=world.getContext('2d');
+      const sprites={
+        godzilla:{colors:['#39b84a','#176b32','#ff6b35'],pixels:[
+          '0000011000','0000110000','0001111000','0011211000','0011111000','0111110000',
+          '1111111100','0111111110','0011111100','0011011000','0110011000','1100110000']},
+        robot:{colors:['#4d73ff','#24348f','#ffe14d'],pixels:[
+          '0001001000','0001111000','0012221100','0112121110','0111111110','0011111100',
+          '1111111111','1011111101','0010110100','0010110100','0110001100','1100000110']},
+        alien:{colors:['#9be83f','#3c8f48','#f4ffb8'],pixels:[
+          '0001111000','0011111100','0111111110','1121111211','1111111111','0111221110',
+          '0011111100','0001111000','0001010000','0011011000','0110001100']},
+        cat:{colors:['#ff9f2f','#a74b23','#fff0b8'],pixels:[
+          '0100000100','0110001100','0111111100','1121111210','1111111110','0111211100',
+          '0011111000','0011111110','0011011011','0110011000']},
+        squid:{colors:['#ee55bd','#812c96','#63e4ee'],pixels:[
+          '0001111000','0011111100','0111111110','1121111211','1111111111','1112222111',
+          '0111111110','0011111100','0011011000','0110101100','1101010110']}
+      };
+      // 5 silhouettes × 20 palettes/accessory combinations = 100 distinct pixel easter eggs.
+      const eggPalettes=[
+        ['#39b84a','#176b32','#ff6b35'],['#4d73ff','#24348f','#ffe14d'],
+        ['#9be83f','#3c8f48','#f4ffb8'],['#ff9f2f','#a74b23','#fff0b8'],
+        ['#ee55bd','#812c96','#63e4ee'],['#ff4d5f','#9f2036','#ffd166'],
+        ['#00c2a8','#006c67','#f8ff8a'],['#a66cff','#4d2a88','#ff9de2'],
+        ['#24a9ff','#095c9e','#ffed68'],['#ff7849','#8d2d2d','#76f7d3'],
+        ['#f25f5c','#7b2738','#ffe066'],['#70c1b3','#247b7b','#f3ffbd'],
+        ['#ffd23f','#cc7a00','#ff5c8a'],['#8ac926','#357a38','#ffca3a'],
+        ['#ff70a6','#b53870','#70d6ff'],['#7bdff2','#246a9b','#f7d6e0'],
+        ['#c77dff','#6a2c91','#80ffdb'],['#fb8500','#9b3d00','#8ecae6'],
+        ['#06d6a0','#087f5b','#ffd166'],['#ef476f','#8c1c3c','#a9f0d1']
+      ];
+      const eggNames=Array.from({length:100},(_,i)=>{
+        const moods=['Disco','Cosmic','Tiny','Turbo','Sleepy','Royal','Glitch','Neon','Lucky','Secret'];
+        const beings=['Godzilla','Robot','Alien','Cat','Squid','Dragon','Crab','Ghost','Dino','Axolotl'];
+        return `${moods[i%10]} ${beings[Math.floor(i/10)]}`;
+      });
+      let creatures=[], nextCreature=performance.now()+900+Math.random()*1800, lastFrame=performance.now();
+      function sizeWorld(){ const d=Math.min(devicePixelRatio||1,2); world.width=innerWidth*d; world.height=innerHeight*d; world.style.width=innerWidth+'px'; world.style.height=innerHeight+'px'; ctx.setTransform(d,0,0,d,0,0); ctx.imageSmoothingEnabled=false; }
+      addEventListener('resize',sizeWorld,{passive:true}); sizeWorld();
+      function spawnCreature(){
+        const keys=Object.keys(sprites), eggId=Math.floor(Math.random()*100), kind=keys[eggId%keys.length];
+        const px=innerWidth<520?4:5+Math.floor(Math.random()*2), fromLeft=Math.random()>.5;
+        const zones=[innerHeight*.16,innerHeight*.68,innerHeight*.79];
+        const y=Math.min(innerHeight-70,zones[Math.floor(Math.random()*zones.length)]+(Math.random()-.5)*60);
+        creatures.push({kind,eggId,name:eggNames[eggId],palette:eggPalettes[eggId%20],accessory:Math.floor(eggId/20),px,x:fromLeft?-75:innerWidth+15,y,dir:fromLeft?1:-1,speed:18+Math.random()*24,life:0,bob:Math.random()*6.28});
+        if(!foundEggs.has(eggId)){ foundEggs.add(eggId); localStorage.setItem('byf-eggs',JSON.stringify([...foundEggs])); updateEggs(); }
+        nextCreature=performance.now()+2400+Math.random()*5200;
+      }
+      function drawCreature(c){
+        const s=sprites[c.kind], flip=c.dir<0, w=s.pixels[0].length*c.px, p=c.palette||s.colors;
+        ctx.save(); ctx.globalAlpha=Math.min(1,c.life/400)*.96; ctx.translate(Math.round(c.x),Math.round(c.y+Math.sin(c.life/240+c.bob)*3));
+        if(flip){ctx.translate(w,0);ctx.scale(-1,1)}
+        s.pixels.forEach((row,y)=>[...row].forEach((v,x)=>{if(v!=='0'){ctx.fillStyle=p[+v-1];ctx.fillRect(x*c.px,y*c.px,c.px,c.px)}}));
+        // Each block of 20 eggs gets a different pixel accessory.
+        if(c.accessory===1){ // crown
+          ctx.fillStyle='#ffd23f'; [[3,-2],[5,-3],[7,-2],[3,-1],[4,-1],[5,-1],[6,-1],[7,-1]].forEach(([x,y])=>ctx.fillRect(x*c.px,y*c.px,c.px,c.px));
+        }else if(c.accessory===2){ // antenna
+          ctx.fillStyle=p[2]; ctx.fillRect(5*c.px,-3*c.px,c.px,3*c.px); ctx.fillRect(4*c.px,-4*c.px,3*c.px,c.px);
+        }else if(c.accessory===3){ // party hat
+          ctx.fillStyle='#ff4d8d'; ctx.fillRect(5*c.px,-4*c.px,c.px,c.px);ctx.fillRect(4*c.px,-3*c.px,3*c.px,c.px);ctx.fillRect(3*c.px,-2*c.px,5*c.px,c.px);
+        }else if(c.accessory===4){ // wings
+          ctx.fillStyle=p[2]; [[-2,4],[-1,3],[-1,4],[-1,5],[10,3],[10,4],[10,5],[11,4]].forEach(([x,y])=>ctx.fillRect(x*c.px,y*c.px,c.px,c.px));
+        }
+        ctx.restore();
+      }
+      function animateWorld(now){
+        const dt=Math.min(40,now-lastFrame)/1000; lastFrame=now; ctx.clearRect(0,0,innerWidth,innerHeight);
+        if(now>nextCreature && creatures.length<2 && !matchMedia('(prefers-reduced-motion: reduce)').matches) spawnCreature();
+        creatures.forEach(c=>{c.life+=dt*1000;c.x+=c.dir*c.speed*dt;drawCreature(c)});
+        creatures=creatures.filter(c=>c.x>-100&&c.x<innerWidth+100); requestAnimationFrame(animateWorld);
+      }
+      requestAnimationFrame(animateWorld);
+
+      function updateBest(){ els.best.textContent = `Personal best: ${best ? best + ' ms' : '—'}`; }
+      updateBest();
+      if(target){
+        els.challenger.classList.add('show'); els.challengeText.textContent=`${challengerName} scored`; els.targetScore.textContent=`${target} ms`;
+        els.eyebrow.textContent='Friend challenge'; els.title.innerHTML='Think you can <span class="accent">beat it?</span>';
+        els.subtitle.textContent='Wait for green. One clean tap decides the winner.';
+      }
+
+      function setState(next){
+        state=next; els.arena.className='arena'; els.body.classList.remove('ready','early');
+        if(next==='waiting') els.arena.classList.add('waiting');
+        if(next==='ready'){ els.arena.classList.add('is-ready'); els.body.classList.add('ready'); }
+      }
+      function start(){
+        clearTimeout(timer); currentScore=null; els.result.classList.remove('show'); els.hint.textContent='Wait for green… don’t tap early.';
+        els.tapMain.textContent='WAIT'; els.tapSub.textContent='not yet'; setState('waiting');
+        const delay=1500+Math.random()*2500;
+        timer=setTimeout(()=>{ readyAt=performance.now(); els.tapMain.textContent='TAP!'; els.tapSub.textContent='now!'; els.hint.textContent='GO!'; setState('ready'); if(navigator.vibrate) navigator.vibrate(25); },delay);
+      }
+      function early(){
+        clearTimeout(timer); setState('early'); els.body.classList.add('early'); els.tapMain.textContent='TOO SOON'; els.tapSub.textContent='tap to retry';
+        els.hint.textContent='False start — wait until the screen turns green.'; els.arena.classList.add('shake');
+        setTimeout(()=>els.arena.classList.remove('shake'),400);
+      }
+      function finish(){
+        currentScore=Math.max(1,Math.round(performance.now()-readyAt)); setState('result');
+        els.tapMain.textContent=`${currentScore}`; els.tapSub.textContent='milliseconds'; els.score.textContent=currentScore;
+        if(!best || currentScore<best){ best=currentScore; localStorage.setItem('byf-best',String(best)); updateBest(); }
+        if(target){
+          const won=currentScore<target, tied=currentScore===target;
+          els.resultLabel.textContent=won?'You beat the challenge':tied?'A perfect tie':'Your reaction time';
+          els.verdict.className='verdict '+(won?'win':tied?'':'lose');
+          els.verdict.textContent=won?`🏆 You won by ${target-currentScore} ms!`:tied?'🤝 Exact tie. That deserves a rematch.':`So close — ${currentScore-target} ms behind ${challengerName}.`;
+        }else{
+          els.resultLabel.textContent='Your reaction time';
+          els.verdict.className='verdict';
+          els.verdict.textContent=currentScore<200?'⚡ Lightning fast.':currentScore<280?'🔥 Sharp reflexes.':'You can go faster. One more?';
+        }
+        els.result.classList.add('show'); els.hint.textContent='Now set the score your friends have to beat.';
+        requestAnimationFrame(()=>els.result.scrollIntoView({behavior:'smooth',block:'nearest'}));
+      }
+      function handleTap(){
+        els.tap.classList.add('pressed'); setTimeout(()=>els.tap.classList.remove('pressed'),120);
+        if(state==='idle'||state==='early'||state==='result') start(); else if(state==='waiting') early(); else if(state==='ready') finish();
+      }
+      els.tap.addEventListener('click',handleTap);
+      els.retry.addEventListener('click',start);
+      document.addEventListener('keydown',e=>{
+        if((e.code==='Space'||e.code==='Enter') && document.activeElement===document.body){ e.preventDefault(); handleTap(); }
+      });
+      function challengeURL(){
+        const url=new URL(location.href); url.search=''; url.hash=''; url.searchParams.set('score',String(currentScore));
+        const name=els.name.value.trim().slice(0,24); if(name) url.searchParams.set('name',name); return url.href;
+      }
+      async function share(){
+        if(!currentScore) return;
+        const name=els.name.value.trim()||'I'; const text=`${name} scored ${currentScore} ms. Think you can beat it?`;
+        const data={title:'Beat Your Friend',text,url:challengeURL()};
+        try{
+          if(navigator.share){ await navigator.share(data); els.hint.textContent='Challenge sent. May the fastest finger win.'; }
+          else if(navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(`${text} ${data.url}`); els.hint.textContent='Challenge link copied! Send it to a friend.'; }
+          else{
+            const box=document.createElement('textarea'); box.value=`${text} ${data.url}`; box.style.position='fixed'; box.style.opacity='0'; document.body.appendChild(box); box.select(); document.execCommand('copy'); box.remove(); els.hint.textContent='Challenge link copied! Send it to a friend.';
+          }
+        }catch(err){ if(err && err.name!=='AbortError') els.hint.textContent='Couldn’t share automatically — copy the URL from your browser.'; }
+      }
+      els.share.addEventListener('click',share);
+    })();
+  </script>
+</body>
+</html>
